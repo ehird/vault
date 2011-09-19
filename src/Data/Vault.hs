@@ -8,12 +8,14 @@
     for an implementation that doesn't need to bypass the type checker.
 ------------------------------------------------------------------------------}
 module Data.Vault (
-    Vault, Key,
-    empty, newKey, lookup, insert, adjust, delete, union,
+    module Data.Vault.Key,
+    Vault,
+    empty, lookup, insert, adjust, delete, union,
     ) where
 
 import Prelude hiding (lookup)
 import Control.Monad.ST
+import Data.Vault.Key
 import qualified Data.Vault.ST as ST
 
 -- | A typed, persistent store for values of arbitrary types.
@@ -23,18 +25,10 @@ import qualified Data.Vault.ST as ST
 --
 -- > instance Monoid Vault
 type Vault = ST.Vault RealWorld
--- | Keys for the vault.
---
--- > Key :: * -> *
-type Key = ST.Key RealWorld
 
 -- | The empty vault.
 empty :: Vault
 empty = ST.empty
-
--- | Create a new key for use with a vault.
-newKey :: IO (Key a)
-newKey = stToIO ST.newKey
 
 -- | Lookup the value of a key in the vault.
 lookup :: Key a -> Vault -> Maybe a

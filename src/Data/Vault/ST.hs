@@ -8,8 +8,9 @@
     for an implementation that doesn't need to bypass the type checker.
 ------------------------------------------------------------------------------}
 module Data.Vault.ST (
-    Vault, Key,
-    empty, newKey, lookup, insert, adjust, delete, union,
+    module Data.Vault.Key.ST,
+    Vault,
+    empty, lookup, insert, adjust, delete, union,
     ) where
 
 import Prelude hiding (lookup)
@@ -18,7 +19,8 @@ import Data.Functor
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Unique
-import Control.Monad.ST
+import qualified Data.Vault.Key.Internal as I
+import Data.Vault.Key.ST
 
 import GHC.Exts (Any)   -- ghc specific tricks
 import Unsafe.Coerce (unsafeCoerce)
@@ -29,8 +31,6 @@ import Unsafe.Coerce (unsafeCoerce)
 -- See the module "Data.Vault" if you'd like to use a simpler version with the 'IO' monad.
 -- You can also use both variants simultaneously; they share a single representation.
 newtype Vault s = Vault (Map Unique Any)
--- | Keys for the vault.
-newtype Key s a = Key Unique
 
 instance Monoid (Vault s) where
     mempty = empty
@@ -40,26 +40,22 @@ instance Monoid (Vault s) where
 empty :: Vault s
 empty = Vault Map.empty
 
--- | Create a new key for use with a vault.
-newKey :: ST s (Key s a)
-newKey = Key <$> unsafeIOToST newUnique
-
 -- | Lookup the value of a key in the vault.
 lookup :: Key s a -> Vault s -> Maybe a
-lookup (Key k) (Vault m) = unsafeCoerce <$> Map.lookup k m 
+lookup (Key (I.Key k)) (Vault m) = unsafeCoerce <$> Map.lookup k m 
 
 -- | Insert a value for a given key. Overwrites any previous value.
 insert :: Key s a -> a -> Vault s -> Vault s
-insert (Key k) x (Vault m) = Vault $ Map.insert k (unsafeCoerce x) m
+insert (Key (I.Key k)) x (Vault m) = Vault $ Map.insert k (unsafeCoerce x) m
 
 -- | Adjust the value for a given key if it's present in the vault.
 adjust :: (a -> a) -> Key s a -> Vault s -> Vault s
-adjust f (Key k) (Vault m) = Vault $ Map.alter f' k m
+adjust f (Key (I.Key k)) (Vault m) = Vault $ Map.alter f' k m
     where f' = unsafeCoerce . f . unsafeCoerce
 
 -- | Delete a key from the vault.
 delete :: Key s a -> Vault s -> Vault s
-delete (Key k) (Vault m) = Vault $ Map.delete k m
+delete (Key (I.Key k)) (Vault m) = Vault $ Map.delete k m
 
 -- | Merge two vaults (left-biased).
 union :: Vault s -> Vault s -> Vault s
